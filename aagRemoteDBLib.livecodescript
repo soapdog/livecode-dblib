@@ -56,6 +56,7 @@ local dbData
 # - password: the password for the given user
 # - encryption_password: a password to encrypt the json sent to the server
 # - cipher: the cypher to be used (default is aes-256-ctr)
+# - url: the url pointing to the PHP file
 on dbSetDefaultConnectionConfiguration pConfigA
    if pConfigA["cipher"] is empty then
       put "aes-256-ctr" into pConfigA["cipher"]
@@ -97,6 +98,7 @@ on  remoteExecuteSQL pDatabaseConnectionA, pSQL, pPlaceholdersA
    
    if pDatabaseConnectionA["encryption_password"] is not empty then
       encrypt tFlatData using pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"] 
+      put it into tFlatData
    end if
    
    post tFlatData to url pDatabaseConnectionA["url"]
@@ -104,6 +106,7 @@ on  remoteExecuteSQL pDatabaseConnectionA, pSQL, pPlaceholdersA
       return "dbliberr:" && the result
    else
       decrypt tRetVal using  pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"]
+      put it into tRetVal
       put jsonimport(tRetVal) into tRetValA
       return tRetValA
    end if
@@ -136,22 +139,34 @@ function  remoteQueryDatabase pDatabaseConnectionA, pSQL, pPlaceholdersA
       put "aes-256-ctr" into pDatabaseConnectionA["cipher"]
    end if
    
+   if pDatabaseConnectionA["encryption_key"] is empty then
+      put "FFFFFFFFFFFFDDCCFFFFFFFFFFFFDDCC" into pDatabaseConnectionA["encryption_key"]
+   end if
+   
    put "query" into tDataA["type"]
    
    put pSQL into tDataA["sql"]
    put jsonexport(tDataA) into tFlatData
    
-   if pDatabaseConnectionA["encryption_password"] is not empty then
-      encrypt tFlatData using pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"] 
+   encrypt tFlatData using pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"]
+   if the result is not empty then
+      return "dbliberr: problem with encryption:" && the result
    end if
+   
+   put base64encode(it) into tFlatData
    
    post tFlatData to url pDatabaseConnectionA["url"]
    if the result is not empty then
       return "dbliberr:" && the result
    else
       put it into tRetVal
-      decrypt tRetVal using  pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"]
-      put jsonimport(tRetVal) into tRetValA
+      decrypt base64decode(tRetVal) using  pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"] 
+      put it into tRetVal
+      try
+         put jsonimport(tRetVal) into tRetValA
+      catch n
+         answer error n
+      end try
       return tRetValA
    end if
 end remoteQueryDatabase
