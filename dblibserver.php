@@ -78,20 +78,21 @@
      break;
      case "execute":
       if (isset($req["placeholders"])) {
-            $retVal = ORM::for_table($req["table"])->raw_query($sql, $req["placeholders"]);
+            $retVal = ORM::raw_execute($sql, $req["placeholders"]);
         } else {
-            $retVal = ORM::for_table($req["table"])->raw_query($sql);
+            $retVal = ORM::raw_execute($sql);
         }
      break;
      default:
      break;
  }
 
- //debug(print_r($retVal, true));
+ $retVal = json_encode($retVal);
+ debug("Response: ${retVal}");
 
 
  header('Content-Type: text/plain+dblib');
- $retVal = openssl_encrypt(json_encode($retVal), $cipher, $encryption_key);
+ $retVal = openssl_encrypt($retVal, $cipher, $encryption_key);
 
  echo $retVal;
 
