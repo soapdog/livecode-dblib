@@ -36,12 +36,15 @@
 # v2.0:
 # - Added remote features
 #
+# v2.1
+# - Created flag to replace placeholders on LC side.
+#
 # v1.18:
 # - Added support for multiple columns with the same name.
 # - Added support for placeholders in dbSetSQL
 
 
-
+constant kREPLACE_PLACEHOLDERS = false
 
 local dbConfigA
 local dbA
@@ -70,7 +73,7 @@ end dbSetDefaultConnectionConfiguration
 # - the SQL
 #
 # Returns an error or an array.
-on  remoteExecuteSQL pDatabaseConnectionA, pSQL, pPlaceholdersA
+on  remoteExecuteSQL pDatabaseConnectionA, pTable, pSQL, pPlaceholdersA
    if pDatabaseConnectionA["user"] is not empty then
       put pDatabaseConnectionA["user"] into tDataA["user"]
    end if
@@ -83,12 +86,36 @@ on  remoteExecuteSQL pDatabaseConnectionA, pSQL, pPlaceholdersA
       put pDatabaseConnectionA["database"] into tDataA["db"]
    end if
    
+   put pTable into tDataA["table"]
+   
    if pPlaceholdersA is an array then
-      put pPlaceholdersA into tDataA["placeholders"]
+      if kREPLACE_PLACEHOLDERS is false then
+         repeat for each key k in pPlaceholdersA
+            put pPlaceholdersA[k] into tA["key" & k]
+            replace ":" & k with ":key" & k in pSQL
+         end repeat
+         
+         put tA into tDataA["placeholders"]
+         
+      else
+         repeat for each key k in pPlaceholdersA
+            put pPlaceholdersA[k] into tValue
+            if tValue is not a number then
+               replace quote with quote&quote in tValue
+               put quote & tValue & quote into tValue
+            end if
+            replace (":" & k) with tValue in pSQL
+         end repeat
+      end if
    end if
+   
    
    if pDatabaseConnectionA["cipher"] is empty then
       put "aes-256-ctr" into pDatabaseConnectionA["cipher"]
+   end if
+   
+   if pDatabaseConnectionA["encryption_key"] is empty then
+      put "FFFFFFFFFFFFDDCCFFFFFFFFFFFFDDCC" into pDatabaseConnectionA["encryption_key"]
    end if
    
    put "execute" into tDataA["type"]
@@ -96,16 +123,21 @@ on  remoteExecuteSQL pDatabaseConnectionA, pSQL, pPlaceholdersA
    put pSQL into tDataA["sql"]
    put jsonexport(tDataA) into tFlatData
    
-   if pDatabaseConnectionA["encryption_password"] is not empty then
-      encrypt tFlatData using pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"] 
-      put it into tFlatData
+   encrypt tFlatData using pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"]
+   if the result is not empty then
+      return "dbliberr: problem with encryption:" && the result
    end if
+   
+   --    get line -1 of it
+   put base64encode(it) into tFlatData
    
    post tFlatData to url pDatabaseConnectionA["url"]
    if the result is not empty then
       return "dbliberr:" && the result
    else
-      decrypt tRetVal using  pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"]
+      get line -1 of it
+      put base64decode(it) into tRetVal
+      decrypt tRetVal using  pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"]
       put it into tRetVal
       put jsonimport(tRetVal) into tRetValA
       return tRetValA
@@ -118,7 +150,7 @@ end remoteExecuteSQL
 # - the SQL
 #
 # Returns an error or an array.
-function  remoteQueryDatabase pDatabaseConnectionA, pSQL, pPlaceholdersA
+function  remoteQueryDatabase pDatabaseConnectionA, pTable, pSQL, pPlaceholdersA
    if pDatabaseConnectionA["user"] is not empty then
       put pDatabaseConnectionA["user"] into tDataA["user"]
    end if
@@ -131,8 +163,26 @@ function  remoteQueryDatabase pDatabaseConnectionA, pSQL, pPlaceholdersA
       put pDatabaseConnectionA["database"] into tDataA["db"]
    end if
    
+   put pTable into tDataA["table"]
+   
    if pPlaceholdersA is an array then
-      put pPlaceholdersA into tDataA["placeholders"]
+      if kREPLACE_PLACEHOLDERS is false then
+         repeat for each key k in pPlaceholdersA
+            put pPlaceholdersA[k] into tA["key" & k]
+            replace ":" & k with ":key" & k in pSQL
+         end repeat
+         
+         put tA into tDataA["placeholders"]
+      else
+         repeat for each key k in pPlaceholdersA
+            put pPlaceholdersA[k] into tValue
+            if tValue is not a number then
+               replace quote with quote&quote in tValue
+               put quote & tValue & quote into tValue
+            end if
+            replace (":" & k) with tValue in pSQL
+         end repeat
+      end if
    end if
    
    if pDatabaseConnectionA["cipher"] is empty then
@@ -159,13 +209,15 @@ function  remoteQueryDatabase pDatabaseConnectionA, pSQL, pPlaceholdersA
    if the result is not empty then
       return "dbliberr:" && the result
    else
-      put it into tRetVal
-      decrypt base64decode(tRetVal) using  pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"] 
+      get line -1 of it
+      put base64decode(it) into tRetVal
+      decrypt tRetVal using  pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"] 
       put it into tRetVal
       try
          put jsonimport(tRetVal) into tRetValA
       catch n
          answer error n
+         put tRetVal
       end try
       return tRetValA
    end if
@@ -757,7 +809,7 @@ function dbGet pTable, pDatabaseConnectionA
    end if
    put dbA["placeholders"] into tPlaceholdersA
    put dbA["sql"] into dbData["last sql"]
-   put remoteQueryDatabase( pDatabaseConnectionA, dbA["sql"], tPlaceholdersA) into theArray
+   put remoteQueryDatabase( pDatabaseConnectionA, pTable, dbA["sql"], tPlaceholdersA) into theArray
    put empty into dbA
    return theArray   
 end dbGet
@@ -824,7 +876,7 @@ function dbInsert pTable, pDataA, pDatabaseConnectionA
    end if
    put dbA["placeholders"] into tPlaceholdersA
    put dbA["sql"] into dbData["last sql"]
-   remoteExecuteSQL pDatabaseConnectionA, dbA["sql"], tPlaceholdersA
+   remoteExecuteSQL pDatabaseConnectionA, pTable, dbA["sql"], tPlaceholdersA
    put the result into theError
    put empty into dbA
    return theError
@@ -914,7 +966,7 @@ function dbUpdate pTable, pDataA, pDatabaseConnectionA
    end if
    put dbA["placeholders"] into tPlaceholdersA
    put dbA["sql"] into dbData["last sql"]
-   remoteExecuteSQL pDatabaseConnectionA, dbA["sql"], tPlaceholdersA
+   remoteExecuteSQL pDatabaseConnectionA, pTable, dbA["sql"], tPlaceholdersA
    put the result into theError
    put empty into dbA
    return theError
