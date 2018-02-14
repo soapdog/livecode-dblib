@@ -459,6 +459,99 @@ on dbCloseParenthesis
    end if
 end dbCloseParenthesis
 
+
+-- BWM added case sensitive GLOB query
+# This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
+#
+# If a code like:
+#     put dbGet("contacts") into tDataA 
+# returns all the contacts. Then a code like:
+#     dbGlob "email", "Runrev.com" 
+#     put dbGet("contacts") into tDataA 
+# Will return all contacts with emails from Runrev.com (case sensitive)
+#
+# The default matching routine for this _contains_.  
+#     dbGlob "email", "runrev.com" 
+# Translates to:
+#     WHERE email GLOB '*runrev.com*' 
+# If you want to change the matching routines, then call it like:
+#     dbGlob "name", "john", "after" 
+# Translates to:
+#     WHERE name GLOB 'john*' 
+# This will return all contacts with names starting with John. You can also use 
+# 'exact' as the matching routine to strip the wildcards and match the exact value.
+# GLOB is a case sensitive match function.
+#
+# You can have as many dbGlob calls as you want. When you finally call a function that touches
+# the database, it will use all those _where clauses_.
+#
+# _Remember: after calling a function that touches the database such as dbGet(), all the query parameters are reset_
+#
+# *Parameters:* a column and a value to look for.
+# *Parameters:* a column, a value to look for and where to put the wildcard.
+#
+# As a convention, the standard operator for multiple dbWhere calls is AND
+# so if you call
+#
+#     dbGlob "email", "runrev.com" 
+#     dbGlob "first_name", "Kevin" 
+#     put dbGet("contacts") into tR 
+#
+# Translates to the following SQL:
+#
+#     SELECT * FROM contacts WHERE email GLOB '*runrev.com*' AND first_name LIKE '*Kevin*' 
+#
+# Now, if you want  to use OR    instead of AND, you just pass an fourth extra parameter with
+# the operator you want, like:
+#
+#     dbGlob "email", "runrev.com" 
+#     dbGlob "first_name", "Kevin", "after", "OR" 
+#     put dbGet("contacts") into tR 
+#
+# Translates to the following SQL:
+#
+#     SELECT * FROM contacts WHERE email GLOB '*runrev.com*' OR first_name LIKE 'Kevin*' 
+#
+command dbGlob pColumn, pValue, pMatch, pConcatenationOperator
+   switch pMatch
+      case "before"
+         put "*" before pValue
+         break
+      case "after"
+         put "*" after pValue
+         break
+      case "exact"
+         break
+      default
+         put "*" before pValue
+         put "*" after pValue
+         break
+   end switch
+   
+   --BWM - allow concatenation operator in the pMatch variable
+   if pConcatenationOperator is empty then
+      if pMatch is among the items of "AND,OR" then
+         put pMatch into pConcatenationOperator
+      else
+         put "AND" into pConcatenationOperator
+      end if
+   end if
+   
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
+   end if
+   
+   put "GLOB" into tOperator
+   if dbA["where"] is empty then
+      put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
+   else
+      put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
+   end if
+end dbGlob
+
+
+
 # This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
 #
 # If a code like:
