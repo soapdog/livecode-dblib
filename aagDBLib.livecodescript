@@ -197,22 +197,18 @@ command dbWhere pColumn, pValue, pConcatenationOperator
       put "AND" into pConcatenationOperator
    end if
    
-   
-   
-   if dbA["where columns"][pColumn] is empty then
-      if dbA["where"] is empty then
-         put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
-      else
-         put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
-      end if
-   else 
-      # AAG: Support for multiple columns
-      --       replace dbA["where columns"][pColumn] with (pColumn && tOperator && placeholder(pValue)) in dbA["where"]
-      put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
    end if
    
-   set the itemdel to space
-   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn] 
+   
+   
+   if dbA["where"] is empty then
+      put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
+   else
+      put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
+   end if
 end dbWhere
 
 # This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
@@ -259,36 +255,34 @@ end dbWhere
 #
 command dbIn pColumn
    
-   put param(the paramcount) into pConcatenationOperator
+   -- BWM - need to adjust parameter count if concatenation operator is found
+   put the paramcount into tParamCount
+   put param(tParamCount) into pConcatenationOperator
    
    if pConcatenationOperator is not among the items of "AND,OR" then
-      put empty into pConcatenationOperator
+      put "AND" into pConcatenationOperator
+   else
+      put tParamCount - 1 into tParamCount
    end if
    
-   if pConcatenationOperator is empty then
-      put "AND" into pConcatenationOperator
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
    end if
    
    put "IN" into tOperator
    
    
-   if dbA["where columns"][pColumn] is empty then
-      if dbA["where"] is empty then
-         put "WHERE" && pColumn && "IN("  before dbA["where"]
-      else
-         put " " & pConcatenationOperator  && pColumn &&  "IN(" after dbA["where"]
-      end if
-      repeat with x = 2 to the paramcount
-         put placeholder(param(x)) & comma after dbA["where"]
-      end repeat
-      delete char -1 of dbA["where"]
-      put ")" after dbA["where"]
-   else 
-      replace dbA["where columns"][pColumn] with (pColumn && tOperator && placeholder(pValue)) in dbA["where"]
+   if dbA["where"] is empty then
+      put "WHERE" && pColumn && "IN("  before dbA["where"]
+   else
+      put " " & pConcatenationOperator  && pColumn &&  "IN(" after dbA["where"]
    end if
-   
-   set the itemdel to space
-   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
+   repeat with x = 2 to tParamCount
+      put placeholder(param(x)) & comma after dbA["where"]
+   end repeat
+   delete char -1 of dbA["where"]
+   put ")" after dbA["where"]
 end dbIn
 
 # This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
@@ -335,14 +329,19 @@ end dbIn
 #
 command dbNotIn pColumn
    
-   put param(the paramcount) into pConcatenationOperator
+   -- BWM - need to adjust parameter count if concatenation operator is found 
+   put the paramcount into tParamCount
+   put param(tParamCount) into pConcatenationOperator
    
    if pConcatenationOperator is not among the items of "AND,OR" then
-      put empty into pConcatenationOperator
+      put "AND" into pConcatenationOperator
+   else
+      put tParamCount - 1 into tParamCount
    end if
    
-   if pConcatenationOperator is empty then
-      put "AND" into pConcatenationOperator
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
    end if
    
    put "NOT IN" into tOperator
@@ -353,14 +352,11 @@ command dbNotIn pColumn
    else
       put " " & pConcatenationOperator  && pColumn &&  "NOT IN(" after dbA["where"]
    end if
-   repeat with x = 2 to the paramcount
+   repeat with x = 2 to tParamCount
       put placeholder(param(x)) & comma after dbA["where"]
    end repeat
    delete char -1 of dbA["where"]
    put ")" after dbA["where"]
-   
-   set the itemdel to space
-   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
 end dbNotIn
 
 
@@ -619,24 +615,24 @@ command dbLike pColumn, pValue, pMatch, pConcatenationOperator
    end switch
    
    if pConcatenationOperator is empty then
-      put "AND" into pConcatenationOperator
+      if pMatch is among the items of "AND,OR" then
+         put pMatch into pConcatenationOperator
+      else
+         put "AND" into pConcatenationOperator
+      end if
+   end if
+   
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
    end if
    
    put "LIKE" into tOperator
-   if dbA["where columns"][pColumn] is empty then
-      if dbA["where"] is empty then
-         put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
-      else
-         put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
-      end if
-   else 
-      # AAG: Support for multiple columns of the same name.
-      --       replace dbA["where columns"][pColumn] with (pColumn && tOperator && placeholder(pValue)) in dbA["where"]
+   if dbA["where"] is empty then
+      put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
+   else
       put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
    end if
-   
-   set the itemdel to space
-   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
 end dbLike
 
 # This command allows you to specify the SQL statement to use in the next function that touches
