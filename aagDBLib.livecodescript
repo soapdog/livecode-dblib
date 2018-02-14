@@ -396,9 +396,27 @@ end dbNotIn
 # This SQL will execute as you expect because you are being clear on how the matches should go.
 # Remember to add the close parenthesis with dbCloseParenthesis as well.
 #
-on dbOpenParenthesis
+on dbOpenParenthesis pConcatenationOperator
+   if pConcatenationOperator is empty then
+      put "AND" into pConcatenationOperator
+   end if
+   
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
+   end if
+   
    if dbA["where"] is not empty then
-      put " ( " after dbA["where"]
+      put " " & pConcatenationOperator && "(" after dbA["where"]
+   else
+      put "WHERE (" before dbA["where"]
+   end if
+   
+   -- BWM - count opening parenthesis so they can be automatically closed
+   if dbA["parenLevel"] is empty  then
+      put 1  into dbA["parenLevel"]
+   else
+      add 1 to dbA["parenLevel"]
    end if
 end dbOpenParenthesis
 
@@ -434,8 +452,10 @@ end dbOpenParenthesis
 # Remember to add the close parenthesis with dbCloseParenthesis as well.
 #
 on dbCloseParenthesis
-   if dbA["where"] is not empty then
+   --BWM - use open parenthesis level to check if call is valid
+   if dbA["parenLevel"] > 0 then
       put " ) " after dbA["where"]
+      subtract 1 from dbA["parenLevel"]
    end if
 end dbCloseParenthesis
 
@@ -634,6 +654,9 @@ function dbGet pTable, pDatabaseConnectionID
          put "*" into dbA["columns"]
       end if
       if dbA["sql"] is empty then
+         repeat while dbA["parenLevel"] > 0
+            dbCloseParenthesis
+         end repeat
          put "SELECT" && dbA["columns"] && "FROM" && pTable && dbA["where"] && dbA["group by"] && dbA["order by"] && dbA["limit"]  into dbA["sql"]
       end if
       put dbA["placeholders"] into tPlaceholdersA
