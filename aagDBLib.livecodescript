@@ -1,7 +1,7 @@
 ﻿script "aagDBLib"
 # ## AAG DB LIB
 #
-# Version 1.18
+# Version 2.2
 # by Andre Alves Garzia ({mailto:support@andregarzia.com})
 #
 # ### Objective
@@ -24,24 +24,48 @@
 #
 # 2) Commercial license:
 # If you do not want to disclose the sources of your application you have the option to purchase a commercial license
-# by paying a fee. You can buy a commercial license from my website at http://andregarzia.com/pages/en/dblib
+# by paying a fee. You can buy a commercial license from my website at http://andregarzia.com/en/projects/dblib
 # Such a commercial license releases you from the requirements of the copyleft GPL license, which include: distribution of all 
 # source code, including your own product; licensing of your own product under the GPL license; prominent mention of the 
 # derbrill copyright and the GPL license; and disclosure of modifications to the library.
 #
 # VERSION CHANGES:
+# v2.1:
+# - Merged remote and normal lib 
+#
+# v2.0:
+# - Added remote features
 #
 # v1.18:
 # - Added support for multiple columns with the same name.
 # - Added support for placeholders in dbSetSQL
+#
+# FIXES
+# todo: fix dbGet, dbInsert, dbUpdate, dbDelete to work with remote connections
 
 
 
-
+local dbConfigA
 local dbId
 local dbA
 local dbData
 
+
+# Sets the default _Database Connection Parameter_ for the calls.
+# *Parameter:* An array with the connection configuration
+#
+# The connection configuration array has the following keys:
+# - user: a user to be passed to the server
+# - password: the password for the given user
+# - encryption_password: a password to encrypt the json sent to the server
+# - cipher: the cypher to be used (default is aes-256-ctr)
+# - url: the url pointing to the PHP file
+on dbSetDefaultConnectionConfiguration pConfigA
+   if pConfigA["cipher"] is empty then
+      put "aes-256-ctr" into pConfigA["cipher"]
+   end if
+   put pConfigA into dbConfigA
+end dbSetDefaultConnectionConfiguration
 
 # Sets the default _Database Connection ID_ for the calls.
 # *Parameter:* You pass the connection id number.
@@ -197,8 +221,6 @@ command dbWhere pColumn, pValue, pConcatenationOperator
       put "AND" into pConcatenationOperator
    end if
    
-   
-   
    if dbA["where columns"][pColumn] is empty then
       if dbA["where"] is empty then
          put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
@@ -258,11 +280,13 @@ end dbWhere
 #     SELECT * FROM contacts WHERE country IN('Brazil', 'US', 'France') or country IN('Germany','Argentina') 
 #
 command dbIn pColumn
-   
-   put param(the paramcount) into pConcatenationOperator
+   put the paramcount into tParamCount
+   put param(tParamCount) into pConcatenationOperator
    
    if pConcatenationOperator is not among the items of "AND,OR" then
       put empty into pConcatenationOperator
+   else
+      subtract 1 from tParamCount
    end if
    
    if pConcatenationOperator is empty then
@@ -278,7 +302,7 @@ command dbIn pColumn
       else
          put " " & pConcatenationOperator  && pColumn &&  "IN(" after dbA["where"]
       end if
-      repeat with x = 2 to the paramcount
+      repeat with x = 2 to tParamCount
          put placeholder(param(x)) & comma after dbA["where"]
       end repeat
       delete char -1 of dbA["where"]
@@ -334,11 +358,13 @@ end dbIn
 #     SELECT * FROM contacts WHERE country NOT IN('Brazil', 'US', 'France') or country NOT IN('Germany','Argentina') 
 #
 command dbNotIn pColumn
-   
-   put param(the paramcount) into pConcatenationOperator
+   put the paramcount into tParamCount
+   put param(tParamCount) into pConcatenationOperator
    
    if pConcatenationOperator is not among the items of "AND,OR" then
       put empty into pConcatenationOperator
+   else
+      subtract 1 from tParamCount
    end if
    
    if pConcatenationOperator is empty then
@@ -353,7 +379,7 @@ command dbNotIn pColumn
    else
       put " " & pConcatenationOperator  && pColumn &&  "NOT IN(" after dbA["where"]
    end if
-   repeat with x = 2 to the paramcount
+   repeat with x = 2 to tParamCount
       put placeholder(param(x)) & comma after dbA["where"]
    end repeat
    delete char -1 of dbA["where"]
@@ -489,6 +515,8 @@ end dbCloseParenthesis
 #
 #     SELECT * FROM contacts WHERE email LIKE '%runrev.com%' OR first_name LIKE 'Kevin%' 
 #
+# Can also pass the matching operator and the concatenation operator.
+#
 command dbLike pColumn, pValue, pMatch, pConcatenationOperator
    switch pMatch
       case "before"
@@ -510,6 +538,7 @@ command dbLike pColumn, pValue, pMatch, pConcatenationOperator
    end if
    
    put "LIKE" into tOperator
+   
    if dbA["where columns"][pColumn] is empty then
       if dbA["where"] is empty then
          put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
@@ -553,12 +582,20 @@ end dbSetSQL
 # *Parameters:* A SQL Statement.
 # *Parameters:* A SQL Statement and a connection id.
 #
-command dbExecuteSQL pSQL, pDatabaseConnectionID
+command dbExecuteSQL pSQL, pDatabaseConnection
    if pDatabaseConnectionID is empty then
-      put dbID into pDatabaseConnectionID
+      if dbId is not empty then
+         put dbId into pDatabaseConnectionA
+      else
+         put dbConfigA into pDatabaseConnectionA
+      end if
    end if
    
-   revExecuteSQL pDatabaseConnectionID, pSQL
+   if pDatabaseConnection is a number then
+      revExecuteSQL pDatabaseConnection, pSQL
+   else
+      remoteExecuteSQL pDatabaseConnection, pSQL
+   end if
    
    put the result into theError
    put empty into dbA
@@ -677,7 +714,7 @@ private command ConvertSQLCursorToArray pCursor, @pOutArrayA
             
             ## Move all fields in row into next dimension of the array
             repeat for each item theField in theFields
-               put revDatabaseColumnNamed(pCursor, theField) into pOutArrayA[i][ theField ]
+               put textdecode(revDatabaseColumnNamed(pCursor, theField), "UTF8") into pOutArrayA[i][ theField ]
 
             end repeat
             
@@ -715,7 +752,7 @@ end arrayToFieldValues
 # *Parameters:* A table name.
 #
 function dbLastRowid pTable
-   dbSelect "SELECT ROWID from" && pTable && "order by ROWID DESC limit 1"
+   dbSetSQL "SELECT ROWID from" && pTable && "order by ROWID DESC limit 1"
    put dbGet() into tA
    return tA[1]["rowid"]
 end dbLastRowid
@@ -900,12 +937,12 @@ end dbDelete
 #
 # it is the same as writing:
 #
-#     put unidecode(the unicodetext of field "firstName", "unicode") into tDataA["firstName"] 
-#     put unidecode(the unicodetext of field "lastName", "unicode") into tDataA["lastName"] 
+#     put textencode(field "firstName", "UTF8") into tDataA["firstName"] 
+#     put textencode(field "lastName", "UTF8") into tDataA["lastName"] 
 #     put the label of button "country" into tDataA["country"] 
 #
 # So it follows these rules:
-# 1 - it looks for a field, it there is one, then it picks the unicodetext property and unidecodes it into the array.
+# 1 - it looks for a field, it there is one, then it picks the value and place it into the array.
 # 2 - it looks for a button and places the label into the array.
 # 3 - it looks for a group and places the value from the custom property _dbvalue_ into the array.
 #
@@ -925,9 +962,7 @@ function dbCardToArray pTable, pDatabaseConnectionID
    repeat for each item tF in tFields
       -- look for field
       if there is a field tF and the locktext of field tF is false then
-         --         put field tF into  tDataA[tF]
-         --         put unidecode(the unicodetext of field tF, "unicode") into tDataA[tF]
-         put unidecode(the unicodetext of fld tF, "utf8") into tDataA[tF]
+         put textencode(fld tF, "UTF8") into tDataA[tF]
          next repeat
       end if
       -- look for button
@@ -955,8 +990,8 @@ end dbCardToArray
 #
 # it is the same as writing:
 #
-#     set the unicodetext of field "firstName" to uniencode(tDataA["firstName"], "unicode") 
-#     set the unicodetext of field "lastName" to uniencode(tDataA["lastName"], "unicode") 
+#     put textdecode(tDataA["firstName"], "UTF8") into field "firstName"
+#     put textdecode(tDataA[ "lastName"], "UTF8") into field "lastName"
 #     set the label of button "country" to tDataA["country"] 
 #
 # So it follows these rules:
@@ -974,10 +1009,7 @@ command dbArrayToCard pDataA
    repeat for each key tK in pDataA
       -- check for field
       if there is a field tK then
-         --         put pDataA[tK] into field tK
-         --         set the unicodetext of fld tK to uniencode(pDataA[tK], "unicode")
-         set the unicodetext of fld tK to uniencode(pDataA[tK], "utf8")
-         
+         put textdecode(pDataA[tK], "UTF8") into fld tK
          next repeat
       end if
       -- check for button
@@ -986,8 +1018,8 @@ command dbArrayToCard pDataA
          next repeat
       end if
       -- look for a group
-      if there is a group tF then
-         set the dbValue of group tF to tDataA[tF]
+      if there is a group tK then
+         set the dbValue of group tK to tDataA[tK]
          next repeat
       end if
    end repeat
@@ -1104,3 +1136,111 @@ command dbMoveAllSQLiteFilesFromEngineToDocuments pExtension
    
    set the defaultfolder to tDF
 end dbMoveAllSQLiteFilesFromEngineToDocuments
+
+--> Remote stuff
+# Executes SQL on remote server. 
+# *Parameters:*
+# - the connection array
+# - the SQL
+#
+# Returns an error or an array.
+on  remoteExecuteSQL pDatabaseConnectionA, pSQL, pPlaceholdersA
+   if pDatabaseConnectionA["user"] is not empty then
+      put pDatabaseConnectionA["user"] into tDataA["user"]
+   end if
+   
+   if pDatabaseConnectionA["password"] is not empty then
+      put pDatabaseConnectionA["password"] into tDataA["password"]
+   end if
+   
+   if pDatabaseConnectionA["database"] is not empty then
+      put pDatabaseConnectionA["database"] into tDataA["db"]
+   end if
+   
+   if pPlaceholdersA is an array then
+      put pPlaceholdersA into tDataA["placeholders"]
+   end if
+   
+   if pDatabaseConnectionA["cipher"] is empty then
+      put "aes-256-ctr" into pDatabaseConnectionA["cipher"]
+   end if
+   
+   put "execute" into tDataA["type"]
+   
+   put pSQL into tDataA["sql"]
+   put jsonexport(tDataA) into tFlatData
+   
+   if pDatabaseConnectionA["encryption_password"] is not empty then
+      encrypt tFlatData using pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"] 
+      put it into tFlatData
+   end if
+   
+   post tFlatData to url pDatabaseConnectionA["url"]
+   if the result is not empty then
+      return "dbliberr:" && the result
+   else
+      decrypt tRetVal using  pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"]
+      put it into tRetVal
+      put jsonimport(tRetVal) into tRetValA
+      return tRetValA
+   end if
+end remoteExecuteSQL
+
+# Queries database on remote server. 
+# *Parameters:*
+# - the connection array
+# - the SQL
+#
+# Returns an error or an array.
+function  remoteQueryDatabase pDatabaseConnectionA, pSQL, pPlaceholdersA
+   if pDatabaseConnectionA["user"] is not empty then
+      put pDatabaseConnectionA["user"] into tDataA["user"]
+   end if
+   
+   if pDatabaseConnectionA["password"] is not empty then
+      put pDatabaseConnectionA["password"] into tDataA["password"]
+   end if
+   
+   if pDatabaseConnectionA["database"] is not empty then
+      put pDatabaseConnectionA["database"] into tDataA["db"]
+   end if
+   
+   if pPlaceholdersA is an array then
+      put pPlaceholdersA into tDataA["placeholders"]
+   end if
+   
+   if pDatabaseConnectionA["cipher"] is empty then
+      put "aes-256-ctr" into pDatabaseConnectionA["cipher"]
+   end if
+   
+   if pDatabaseConnectionA["encryption_key"] is empty then
+      put "FFFFFFFFFFFFDDCCFFFFFFFFFFFFDDCC" into pDatabaseConnectionA["encryption_key"]
+   end if
+   
+   put "query" into tDataA["type"]
+   
+   put pSQL into tDataA["sql"]
+   put jsonexport(tDataA) into tFlatData
+   
+   encrypt tFlatData using pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"]
+   if the result is not empty then
+      return "dbliberr: problem with encryption:" && the result
+   end if
+   
+   put base64encode(it) into tFlatData
+   
+   post tFlatData to url pDatabaseConnectionA["url"]
+   if the result is not empty then
+      return "dbliberr:" && the result
+   else
+      put it into tRetVal
+      decrypt base64decode(tRetVal) using  pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"] 
+      put it into tRetVal
+      try
+         put jsonimport(tRetVal) into tRetValA
+      catch n
+         answer error n
+      end try
+      return tRetValA
+   end if
+end remoteQueryDatabase
