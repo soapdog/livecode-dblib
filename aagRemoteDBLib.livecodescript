@@ -1,7 +1,7 @@
 ﻿script "aagRemoteDBLib"
 # ## AAG REMOTE DB LIB
 #
-# Version 2.0
+# Version 2.2
 # by Andre Alves Garzia ({mailto:support@andregarzia.com})
 #
 # ### Objective
@@ -1135,12 +1135,12 @@ end dbDelete
 #
 # it is the same as writing:
 #
-#     put unidecode(the unicodetext of field "firstName", "unicode") into tDataA["firstName"]
-#     put unidecode(the unicodetext of field "lastName", "unicode") into tDataA["lastName"]
+#     put textencode(field "firstName", "UTF8") into tDataA["firstName"] 
+#     put textencode(field "lastName", "UTF8") into tDataA["lastName"]
 #     put the label of button "country" into tDataA["country"]
 #
 # So it follows these rules:
-# 1 - it looks for a field, it there is one, then it picks the unicodetext property and unidecodes it into the array.
+# 1 - it looks for a field, it there is one, then it picks value and place it into the array.
 # 2 - it looks for a button and places the label into the array.
 # 3 - it looks for a group and places the value from the custom property _dbvalue_ into the array.
 #
@@ -1160,9 +1160,7 @@ function dbCardToArray pTable, pDatabaseConnectionA
    repeat for each item tF in tFields
       -- look for field
       if there is a field tF and the locktext of field tF is false then
-         --         put field tF into  tDataA[tF]
-         --         put unidecode(the unicodetext of field tF, "unicode") into tDataA[tF]
-         put unidecode(the unicodetext of fld tF, "utf8") into tDataA[tF]
+         put textencode(fld tF, "UTF8") into tDataA[tF]
          next repeat
       end if
       -- look for button
@@ -1190,8 +1188,8 @@ end dbCardToArray
 #
 # it is the same as writing:
 #
-#     set the unicodetext of field "firstName" to uniencode(tDataA["firstName"], "unicode")
-#     set the unicodetext of field "lastName" to uniencode(tDataA["lastName"], "unicode")
+#     put textdecode(tDataA["firstName"], "UTF8") into field "firstName"
+#     put textdecode(tDataA[ "lastName"], "UTF8") into field "lastName"
 #     set the label of button "country" to tDataA["country"]
 #
 # So it follows these rules:
@@ -1209,9 +1207,7 @@ command dbArrayToCard pDataA
    repeat for each key tK in pDataA
       -- check for field
       if there is a field tK then
-         --         put pDataA[tK] into field tK
-         --         set the unicodetext of fld tK to uniencode(pDataA[tK], "unicode")
-         set the unicodetext of fld tK to uniencode(pDataA[tK], "utf8")
+         put textdecode(pDataA[tK], "UTF8") into fld tK
 
          next repeat
       end if
