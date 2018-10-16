@@ -1,7 +1,7 @@
 ﻿script "aagDBLib"
 # ## AAG DB LIB
 #
-# Version 2.2
+# Version 2.3
 # by Andre Alves Garzia ({mailto:support@andregarzia.com})
 #
 # ### Objective
@@ -27,9 +27,12 @@
 # by paying a fee. You can buy a commercial license from my website at http://andregarzia.com/en/projects/dblib
 # Such a commercial license releases you from the requirements of the copyleft GPL license, which include: distribution of all 
 # source code, including your own product; licensing of your own product under the GPL license; prominent mention of the 
-# derbrill copyright and the GPL license; and disclosure of modifications to the library.
+# andre garzia copyright and the GPL license; and disclosure of modifications to the library.
 #
 # VERSION CHANGES:
+# v2.3:
+# - Fixed strange unicode bug...
+#
 # v2.1:
 # - Merged remote and normal lib 
 #
@@ -1009,7 +1012,8 @@ command dbArrayToCard pDataA
    repeat for each key tK in pDataA
       -- check for field
       if there is a field tK then
-         put textdecode(pDataA[tK], "UTF8") into fld tK
+         --         put textdecode(pDataA[tK], "UTF8") into fld tK
+         put pDataA[tK] into fld tK
          next repeat
       end if
       -- check for button
