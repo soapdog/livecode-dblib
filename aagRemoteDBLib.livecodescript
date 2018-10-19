@@ -370,21 +370,19 @@ command dbWhere pColumn, pValue, pConcatenationOperator
    if pConcatenationOperator is empty then
       put "AND" into pConcatenationOperator
    end if
-
-   if dbA["where columns"][pColumn] is empty then
-      if dbA["where"] is empty then
-         put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
-      else
-         put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
-      end if
+   
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
+   end if
+   
+   
+   
+   if dbA["where"] is empty then
+      put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
    else
-      # AAG: Support for multiple columns
-      --       replace dbA["where columns"][pColumn] with (pColumn && tOperator && placeholder(pValue)) in dbA["where"]
       put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
    end if
-
-   set the itemdel to space
-   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
 end dbWhere
 
 # This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
@@ -430,37 +428,35 @@ end dbWhere
 #     SELECT * FROM contacts WHERE country IN('Brazil', 'US', 'France') or country IN('Germany','Argentina')
 #
 command dbIn pColumn
-
-   put param(the paramcount) into pConcatenationOperator
-
+   
+   -- BWM - need to adjust parameter count if concatenation operator is found
+   put the paramcount into tParamCount
+   put param(tParamCount) into pConcatenationOperator
+   
    if pConcatenationOperator is not among the items of "AND,OR" then
+      put "AND" into pConcatenationOperator
+   else
+      put tParamCount - 1 into tParamCount
+   end if
+   
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
       put empty into pConcatenationOperator
    end if
-
-   if pConcatenationOperator is empty then
-      put "AND" into pConcatenationOperator
-   end if
-
+   
    put "IN" into tOperator
-
-
-   if dbA["where columns"][pColumn] is empty then
-      if dbA["where"] is empty then
-         put "WHERE" && pColumn && "IN("  before dbA["where"]
-      else
-         put " " & pConcatenationOperator  && pColumn &&  "IN(" after dbA["where"]
-      end if
-      repeat with x = 2 to the paramcount
-         put placeholder(param(x)) & comma after dbA["where"]
-      end repeat
-      delete char -1 of dbA["where"]
-      put ")" after dbA["where"]
+   
+   
+   if dbA["where"] is empty then
+      put "WHERE" && pColumn && "IN("  before dbA["where"]
    else
-      replace dbA["where columns"][pColumn] with (pColumn && tOperator && placeholder(pValue)) in dbA["where"]
+      put " " & pConcatenationOperator  && pColumn &&  "IN(" after dbA["where"]
    end if
-
-   set the itemdel to space
-   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
+   repeat with x = 2 to tParamCount
+      put placeholder(param(x)) & comma after dbA["where"]
+   end repeat
+   delete char -1 of dbA["where"]
+   put ")" after dbA["where"]
 end dbIn
 
 # This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
@@ -506,17 +502,22 @@ end dbIn
 #     SELECT * FROM contacts WHERE country NOT IN('Brazil', 'US', 'France') or country NOT IN('Germany','Argentina')
 #
 command dbNotIn pColumn
-
-   put param(the paramcount) into pConcatenationOperator
-
+   
+   -- BWM - need to adjust parameter count if concatenation operator is found 
+   put the paramcount into tParamCount
+   put param(tParamCount) into pConcatenationOperator
+   
    if pConcatenationOperator is not among the items of "AND,OR" then
+      put "AND" into pConcatenationOperator
+   else
+      put tParamCount - 1 into tParamCount
+   end if
+   
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
       put empty into pConcatenationOperator
    end if
-
-   if pConcatenationOperator is empty then
-      put "AND" into pConcatenationOperator
-   end if
-
+   
    put "NOT IN" into tOperator
 
 
@@ -525,14 +526,11 @@ command dbNotIn pColumn
    else
       put " " & pConcatenationOperator  && pColumn &&  "NOT IN(" after dbA["where"]
    end if
-   repeat with x = 2 to the paramcount
+   repeat with x = 2 to tParamCount
       put placeholder(param(x)) & comma after dbA["where"]
    end repeat
    delete char -1 of dbA["where"]
    put ")" after dbA["where"]
-
-   set the itemdel to space
-   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
 end dbNotIn
 
 
@@ -568,9 +566,27 @@ end dbNotIn
 # This SQL will execute as you expect because you are being clear on how the matches should go.
 # Remember to add the close parenthesis with dbCloseParenthesis as well.
 #
-on dbOpenParenthesis
+on dbOpenParenthesis pConcatenationOperator
+   if pConcatenationOperator is empty then
+      put "AND" into pConcatenationOperator
+   end if
+   
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
+   end if
+   
    if dbA["where"] is not empty then
-      put " ( " after dbA["where"]
+      put " " & pConcatenationOperator && "(" after dbA["where"]
+   else
+      put "WHERE (" before dbA["where"]
+   end if
+   
+   -- BWM - count opening parenthesis so they can be automatically closed
+   if dbA["parenLevel"] is empty  then
+      put 1  into dbA["parenLevel"]
+   else
+      add 1 to dbA["parenLevel"]
    end if
 end dbOpenParenthesis
 
@@ -606,18 +622,113 @@ end dbOpenParenthesis
 # Remember to add the close parenthesis with dbCloseParenthesis as well.
 #
 on dbCloseParenthesis
-   if dbA["where"] is not empty then
+   --BWM - use open parenthesis level to check if call is valid
+   if dbA["parenLevel"] > 0 then
       put " ) " after dbA["where"]
+      subtract 1 from dbA["parenLevel"]
    end if
 end dbCloseParenthesis
 
+
+-- BWM added case sensitive GLOB query
 # This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
 #
 # If a code like:
 #     put dbGet("contacts") into tDataA
 # returns all the contacts. Then a code like:
-#     dbLike "email", "runrev.com"
-#     put dbGet("contacts") into tDataA
+#     dbGlob "email", "Runrev.com" 
+#     put dbGet("contacts") into tDataA 
+# Will return all contacts with emails from Runrev.com (case sensitive)
+#
+# The default matching routine for this _contains_.  
+#     dbGlob "email", "runrev.com" 
+# Translates to:
+#     WHERE email GLOB '*runrev.com*' 
+# If you want to change the matching routines, then call it like:
+#     dbGlob "name", "john", "after" 
+# Translates to:
+#     WHERE name GLOB 'john*' 
+# This will return all contacts with names starting with John. You can also use 
+# 'exact' as the matching routine to strip the wildcards and match the exact value.
+# GLOB is a case sensitive match function.
+#
+# You can have as many dbGlob calls as you want. When you finally call a function that touches
+# the database, it will use all those _where clauses_.
+#
+# _Remember: after calling a function that touches the database such as dbGet(), all the query parameters are reset_
+#
+# *Parameters:* a column and a value to look for.
+# *Parameters:* a column, a value to look for and where to put the wildcard.
+#
+# As a convention, the standard operator for multiple dbWhere calls is AND
+# so if you call
+#
+#     dbGlob "email", "runrev.com" 
+#     dbGlob "first_name", "Kevin" 
+#     put dbGet("contacts") into tR 
+#
+# Translates to the following SQL:
+#
+#     SELECT * FROM contacts WHERE email GLOB '*runrev.com*' AND first_name LIKE '*Kevin*' 
+#
+# Now, if you want  to use OR    instead of AND, you just pass an fourth extra parameter with
+# the operator you want, like:
+#
+#     dbGlob "email", "runrev.com" 
+#     dbGlob "first_name", "Kevin", "after", "OR" 
+#     put dbGet("contacts") into tR 
+#
+# Translates to the following SQL:
+#
+#     SELECT * FROM contacts WHERE email GLOB '*runrev.com*' OR first_name LIKE 'Kevin*' 
+#
+command dbGlob pColumn, pValue, pMatch, pConcatenationOperator
+   switch pMatch
+      case "before"
+         put "*" before pValue
+         break
+      case "after"
+         put "*" after pValue
+         break
+      case "exact"
+         break
+      default
+         put "*" before pValue
+         put "*" after pValue
+         break
+   end switch
+   
+   --BWM - allow concatenation operator in the pMatch variable
+   if pConcatenationOperator is empty then
+      if pMatch is among the items of "AND,OR" then
+         put pMatch into pConcatenationOperator
+      else
+         put "AND" into pConcatenationOperator
+      end if
+   end if
+   
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
+   end if
+   
+   put "GLOB" into tOperator
+   if dbA["where"] is empty then
+      put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
+   else
+      put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
+   end if
+end dbGlob
+
+
+
+# This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
+#
+# If a code like:
+#     put dbGet("contacts") into tDataA 
+# returns all the contacts. Then a code like:
+#     dbLike "email", "runrev.com" 
+#     put dbGet("contacts") into tDataA 
 # Will return all contacts with emails from runrev.com
 #
 # The default matching routine for this _contains_.
@@ -678,24 +789,24 @@ command dbLike pColumn, pValue, pMatch, pConcatenationOperator
    end switch
 
    if pConcatenationOperator is empty then
-      put "AND" into pConcatenationOperator
-   end if
-
-   put "LIKE" into tOperator
-   if dbA["where columns"][pColumn] is empty then
-      if dbA["where"] is empty then
-         put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
+      if pMatch is among the items of "AND,OR" then
+         put pMatch into pConcatenationOperator
       else
-         put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
+         put "AND" into pConcatenationOperator
       end if
+   end if
+   
+   -- BWM - properly handle concatenation operator when parenthesis used
+   if the last word of dbA["where"] = "(" then
+      put empty into pConcatenationOperator
+   end if
+   
+   put "LIKE" into tOperator
+   if dbA["where"] is empty then
+      put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
    else
-      # AAG: Support for multiple columns of the same name.
-      --       replace dbA["where columns"][pColumn] with (pColumn && tOperator && placeholder(pValue)) in dbA["where"]
       put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
    end if
-
-   set the itemdel to space
-   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
 end dbLike
 
 # This command allows you to specify the SQL statement to use in the next function that touches
