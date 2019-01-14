@@ -3,14 +3,10 @@
   - [Quick start with local database](quickstart.md)
   - [Quick start with remote database](quickstart_remote.md)
 
-- Guide
+- Tutorial
 
-  - [Configuration](configuration.md)
-  - [Themes](themes.md)
-  - [List of Plugins](plugins.md)
-  - [Write a Plugin](write-a-plugin.md)
-  - [Markdown configuration](markdown.md)
-  - [Language highlighting](language-highlight.md)
+  - [Creating a contacts application](tutorial.md)
+  - [A remote todo list](tutorialRemote.md)
 
 - API Reference
 
@@ -24,5 +20,20 @@
   - Querying the database
 
     - [dbGet](api/dbGet.md)
+
+  - Refining queries
+
+    - [dbWhere](api/dbWhere.md)
+    - [dbLike](api/dbLike.md)
+    - [dbColumns](api/dbColumns.md)
+    - [dbGroupBy](api/dbGroupBy.md)
+    - [dbIn](api/dbIn.md)
+    - [dbLimit](api/dbLimit.md)
+    - [dbOrderBy](api/dbOrderBy.md)
+
+  - Raw queries
+
+    - [dbExecuteSQL](api/dbExecuteSQL.md)
+    - [dbSetSQL](api/dbSetSQL.md)
  
 
