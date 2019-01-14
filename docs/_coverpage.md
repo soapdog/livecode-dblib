@@ -12,3 +12,4 @@
 
 [GitHub](https://github.com/soapdog/livecode-dblib/)
 [Get Started](#readme)
+[Buy License](https://sowl.co/YpT7k)
