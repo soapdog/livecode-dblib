@@ -13,3 +13,12 @@
 [GitHub](https://github.com/soapdog/livecode-dblib/)
 [Get Started](#readme)
 [Buy License](https://sowl.co/YpT7k)
+
+<!-- todo: 
+[ ] add rest of docs, 
+[ ] replace coments on sts
+
+[ ] schema builder
+[ ] local links
+[ ] demos
+-->
