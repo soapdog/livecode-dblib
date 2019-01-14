@@ -41,7 +41,7 @@ WHERE
   country IN('Germany','Argentina') 
 ~~~
 
-Now, if you want  to use ORinstead of AND, you just pass an last extra parameter with the operator you want, like:
+Now, if you want  to use `OR` instead of `AND`, you just pass an last extra parameter with the operator you want, like:
 
 ~~~
 dbIn "country", "Brazil","US","France" 

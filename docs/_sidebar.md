@@ -28,6 +28,7 @@
     - [dbColumns](api/dbColumns.md)
     - [dbGroupBy](api/dbGroupBy.md)
     - [dbIn](api/dbIn.md)
+    - [dbNotIn](api/dbNotIn.md)
     - [dbLimit](api/dbLimit.md)
     - [dbOrderBy](api/dbOrderBy.md)
 
