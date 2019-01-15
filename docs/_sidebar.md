@@ -16,6 +16,7 @@
     - [dbSetDefaultConnectionID](api/dbSetDefaultConnectionID.md)
     - [dbSetDefaultConnectionConfiguration](api/dbSetDefaultConnectionConfiguration.md)
     - [dbGetDefaultConnectionID](api/dbGetDefaultConnectionID.md)
+    - [dbGetDefaultConnectionConfiguration](api/dbGetDefaultConnectionConfiguration.md)
 
   - Fetching records
 
@@ -45,6 +46,8 @@
 
     - [dbExecuteSQL](api/dbExecuteSQL.md)
     - [dbSetSQL](api/dbSetSQL.md)
+    - [dbRemoteExecuteSQL](api/dbRemoteExecuteSQL.md)
+    - [dbRemoteQueryDatabase](api/dbRemoteQueryDatabase.md)
  
   - Utilities
 

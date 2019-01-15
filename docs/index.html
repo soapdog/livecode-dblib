@@ -19,10 +19,17 @@
       coverpage: true,
       loadSidebar: true,
       loadNavbar: true,
-      autoHeader: true
+      autoHeader: true,
+      search: {
+        maxAge: 86400000, // Expiration time, the default one day
+        paths: 'auto',
+        placeholder: 'Type to search',
+      }
     }
   </script>
   <script src="vendor/docsify.js"></script>
+  <script src="vendor/search.min.js"></script>
+
 </body>
 
 </html>
