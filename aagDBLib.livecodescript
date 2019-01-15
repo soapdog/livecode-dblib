@@ -1,7 +1,7 @@
 ﻿script "aagDBLib"
 # ## AAG DB LIB
 #
-# Version 2.3
+# Version 4.0
 # by Andre Alves Garzia ({mailto:support@andregarzia.com})
 #
 # ### Objective
@@ -30,6 +30,10 @@
 # andre garzia copyright and the GPL license; and disclosure of modifications to the library.
 #
 # VERSION CHANGES:
+#
+# v4.0: 
+# - Fixes and merge with remote lib
+#
 # v2.3:
 # - Fixed strange unicode bug...
 #
@@ -1120,7 +1124,7 @@ command dbMoveAllSQLiteFilesFromEngineToDocuments pExtension
    put the files into tFilesList
    
    if pExtension is empty then
-      put ".db" into pExtension
+      put ".sqlite" into pExtension
    end if
    
    filter tFilesList with ("*" & pExtension & "*")
