@@ -1,40 +1,41 @@
 ﻿script "aagDBLib"
 # ## AAG DB LIB
 #
-# Version 2.3
+# Version 4.0
 # by Andre Alves Garzia ({mailto:support@andregarzia.com})
 #
 # ### Objective
 # Creating a little ORM library to be used on mobile applications.
 # This library is inspired by RevIgniter, Rails and others.
 #
-# URL: {http://www.andregarzia.com/page/en/dblib}
-# Online API Documentation: {http://www.andregarzia.com/aux/dblibapi}
-# Guide: {http://www.andregarzia.com/aux/dblibguide}
-# Support Forum: {http://andregarzia.com/forum}. This is the main venue for getting your questions answered and providing feedback.
+# URL: {http://www.andregarzia.com/livecode/dblib}
 #
 # Licensing terms:
 #
 # These scripts are licensed to you if you agree to be bound to one of the following
-# License types at your choice.  
+# License types at your choice.
 #
 # 1) GPL 3
-# You may use DB Lib as FREE Software as outlined in the terms of the GPL3 or any 
+# You may use DB Lib as FREE Software as outlined in the terms of the GPL3 or any
 # higher version of the GPL as found here: http://www.gnu.org/licenses/gpl-3.0.html
 #
 # 2) Commercial license:
 # If you do not want to disclose the sources of your application you have the option to purchase a commercial license
 # by paying a fee. You can buy a commercial license from my website at http://andregarzia.com/en/projects/dblib
-# Such a commercial license releases you from the requirements of the copyleft GPL license, which include: distribution of all 
-# source code, including your own product; licensing of your own product under the GPL license; prominent mention of the 
+# Such a commercial license releases you from the requirements of the copyleft GPL license, which include: distribution of all
+# source code, including your own product; licensing of your own product under the GPL license; prominent mention of the
 # andre garzia copyright and the GPL license; and disclosure of modifications to the library.
 #
 # VERSION CHANGES:
+#
+# v4.0:
+# - Fixes and merge with remote lib
+#
 # v2.3:
 # - Fixed strange unicode bug...
 #
 # v2.1:
-# - Merged remote and normal lib 
+# - Merged remote and normal lib
 #
 # v2.0:
 # - Added remote features
@@ -47,6 +48,7 @@
 # todo: fix dbGet, dbInsert, dbUpdate, dbDelete to work with remote connections
 
 
+constant kREPLACE_PLACEHOLDERS = false
 
 local dbConfigA
 local dbId
@@ -76,7 +78,7 @@ on dbSetDefaultConnectionID pID
     put pID into dbID
 end dbSetDefaultConnectionID
 
-# Escapes a string for SQLite usage. 
+# Escapes a string for SQLite usage.
 # From SQLite documentation, all that is required to escape a string is to escape the single quotes.
 # *Parameter:* You pass a string.
 # *Returns:* The escaped string.
@@ -107,14 +109,14 @@ private function placeholder pValue
    if the keys of dbA["placeholders"] is empty then
       put 1 into dbA["next placeholder"]
    end if
-   
+
    put dbA["next placeholder"] into tCurrentPlaceholder
    put pValue into dbA["placeholders"][tCurrentPlaceholder]
    add 1 to dbA["next placeholder"]
    return (":" & tCurrentPlaceholder)
 end placeholder
 
-# This command receives a comma separated list of column names 
+# This command receives a comma separated list of column names
 # that you want to be included in your next database call.
 # By default, database queries include all columns. This behavior can be changed with this command.
 # *Parameters: a comma separated list of columns
@@ -128,8 +130,8 @@ command dbResetQuery
    put empty into dbA
 end dbResetQuery
 
-# This will return the current query parameters. You can use _dbRestoreQueryParameters_ to 
-# restore it later. This is useful when you're creating routines and don't want other queries to 
+# This will return the current query parameters. You can use _dbRestoreQueryParameters_ to
+# restore it later. This is useful when you're creating routines and don't want other queries to
 # pollute your current parameters.
 # *Returns:* An array with the current parameters.
 function dbPreserveQueryParameters
@@ -148,21 +150,21 @@ end dbRestoreQueryParameters
 # If a code like:
 #     put dbGet("contacts") into tDataA
 #     returns all the contacts. Then a code like:
-# 
-#     dbWhere "country", "Brazil" 
-#     dbWhere "sex", "male" 
-#     put dbGet("contacts") into tDataA 
-#     
+#
+#     dbWhere "country", "Brazil"
+#     dbWhere "sex", "male"
+#     put dbGet("contacts") into tDataA
+#
 # Will return all contacts that are male and from Brazil.
 #
-# The default operator for this is _=_. 
-#     dbWhere "country", "Brazil" 
+# The default operator for this is _=_.
+#     dbWhere "country", "Brazil"
 # Translates to:
-#     WHERE country = 'Brazil' 
+#     WHERE country = 'Brazil'
 # If you want to change the operator, then call it like:
-#     dbWhere "age >", "21" 
+#     dbWhere "age >", "21"
 # Translates to:
-#     WHERE age > 21 
+#     WHERE age > 21
 #
 # You can have as many _dbWhere_ calls as you want. When you finally call a function that touches
 # the database, it will use all those _where clauses_.
@@ -175,32 +177,32 @@ end dbRestoreQueryParameters
 # As a convention, the standard operator for multiple dbWhere calls is AND
 # so if you call
 #
-#     dbWhere "country", "Brazil" 
-#     dbWhere "age >", "21" 
-#     put dbGet("contacts") into tR 
+#     dbWhere "country", "Brazil"
+#     dbWhere "age >", "21"
+#     put dbGet("contacts") into tR
 #
 # Translates to the following SQL:
 #
-#     SELECT * FROM contacts WHERE country = 'Brazil' AND age > 21 
+#     SELECT * FROM contacts WHERE country = 'Brazil' AND age > 21
 #
 # Now, if you want  to use OR    instead of AND, you just pass an third extra parameter with
 # the operator you want, like:
 #
-#     dbWhere "country", "Brazil" 
-#     dbWhere "age >", "21", "OR" 
-#     put dbGet("contacts") into tR 
+#     dbWhere "country", "Brazil"
+#     dbWhere "age >", "21", "OR"
+#     put dbGet("contacts") into tR
 #
 # Translates to the following SQL:
 #
-#     SELECT * FROM contacts WHERE country = 'Brazil' OR age > 21 
+#     SELECT * FROM contacts WHERE country = 'Brazil' OR age > 21
 #
 # If you want to check if a column is null use a command like:
 #
-#      dbWhere "country", "NULL" 
+#      dbWhere "country", "NULL"
 #
 # If you want to check if a column is not null use a command like:
 #
-#     dbWhere "country", "NOT NULL" 
+#     dbWhere "country", "NOT NULL"
 #
 command dbWhere pColumn, pValue, pConcatenationOperator
    if the number of words in pColumn > 1 then
@@ -209,35 +211,35 @@ command dbWhere pColumn, pValue, pConcatenationOperator
    else
       put "=" into tOperator
    end if
-   
+
    if pValue is "null" then
       put "IS" into tOperator
       put "NULL" into pValue
    end if
-   
+
    if pValue is "not null" then
       put "IS NOT" into tOperator
       put "NULL" into pValue
    end if
-   
+
    if pConcatenationOperator is empty then
       put "AND" into pConcatenationOperator
    end if
-   
+
    if dbA["where columns"][pColumn] is empty then
       if dbA["where"] is empty then
          put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
       else
          put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
       end if
-   else 
+   else
       # AAG: Support for multiple columns
       --       replace dbA["where columns"][pColumn] with (pColumn && tOperator && placeholder(pValue)) in dbA["where"]
       put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
    end if
-   
+
    set the itemdel to space
-   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn] 
+   put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
 end dbWhere
 
 # This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
@@ -245,11 +247,11 @@ end dbWhere
 # It allows you to specify the "IN" part of a WHERE clause.
 #
 # If a code like:
-#     put dbGet("contacts") into tDataA 
-# returns all the contacts. 
+#     put dbGet("contacts") into tDataA
+# returns all the contacts.
 # Then a code like:
-#     dbIn "country", "Brazil","US","France" 
-#     put dbGet("contacts") into tDataA 
+#     dbIn "country", "Brazil","US","France"
+#     put dbGet("contacts") into tDataA
 # Will return all contacts that are from Brazil or the US or France.
 #
 # You can have as many _dbIn_ calls as you want. When you finally call a function that touches
@@ -263,42 +265,42 @@ end dbWhere
 # As a convention, the standard operator for multiple _dbIn_ calls is AND
 # so if you call
 #
-#     dbIn "country", "Brazil","US","France" 
-#     dbIn "country", "Germany","Argentina" 
-#     put dbGet("contacts") into tR 
+#     dbIn "country", "Brazil","US","France"
+#     dbIn "country", "Germany","Argentina"
+#     put dbGet("contacts") into tR
 #
 # Translates to the following SQL:
 #
-#     SELECT * FROM contacts WHERE country IN('Brazil', 'US', 'France') and country IN('Germany','Argentina') 
+#     SELECT * FROM contacts WHERE country IN('Brazil', 'US', 'France') and country IN('Germany','Argentina')
 #
 # Now, if you want  to use OR    instead of AND, you just pass an last extra parameter with
 # the operator you want, like:
 #
-#     dbIn "country", "Brazil","US","France" 
-#     dbIn "country", "Germany","Argentina","OR" 
-#     put dbGet("contacts") into tR 
+#     dbIn "country", "Brazil","US","France"
+#     dbIn "country", "Germany","Argentina","OR"
+#     put dbGet("contacts") into tR
 #
 # Translates to the following SQL:
 #
-#     SELECT * FROM contacts WHERE country IN('Brazil', 'US', 'France') or country IN('Germany','Argentina') 
+#     SELECT * FROM contacts WHERE country IN('Brazil', 'US', 'France') or country IN('Germany','Argentina')
 #
 command dbIn pColumn
    put the paramcount into tParamCount
    put param(tParamCount) into pConcatenationOperator
-   
+
    if pConcatenationOperator is not among the items of "AND,OR" then
       put empty into pConcatenationOperator
    else
       subtract 1 from tParamCount
    end if
-   
+
    if pConcatenationOperator is empty then
       put "AND" into pConcatenationOperator
    end if
-   
+
    put "IN" into tOperator
-   
-   
+
+
    if dbA["where columns"][pColumn] is empty then
       if dbA["where"] is empty then
          put "WHERE" && pColumn && "IN("  before dbA["where"]
@@ -310,10 +312,10 @@ command dbIn pColumn
       end repeat
       delete char -1 of dbA["where"]
       put ")" after dbA["where"]
-   else 
+   else
       replace dbA["where columns"][pColumn] with (pColumn && tOperator && placeholder(pValue)) in dbA["where"]
    end if
-   
+
    set the itemdel to space
    put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
 end dbIn
@@ -323,11 +325,11 @@ end dbIn
 # It allows you to specify the "NOT IN" part of a WHERE clause.
 #
 # If a code like:
-#     put dbGet("contacts") into tDataA 
-# returns all the contacts. 
+#     put dbGet("contacts") into tDataA
+# returns all the contacts.
 # Then a code like:
-#     dbNotIn "country", "Brazil","US","France" 
-#     put dbGet("contacts") into tDataA 
+#     dbNotIn "country", "Brazil","US","France"
+#     put dbGet("contacts") into tDataA
 # Will return all contacts that are NOT from Brazil or the US or France.
 #
 # You can have as many _dbNotIn_ calls as you want. When you finally call a function that touches
@@ -341,42 +343,42 @@ end dbIn
 # As a convention, the standard operator for multiple _dbNotIn_ calls is AND
 # so if you call
 #
-#     dbNotIn "country", "Brazil","US","France" 
-#     dbNotIn "country", "Germany","Argentina" 
-#     put dbGet("contacts") into tR 
+#     dbNotIn "country", "Brazil","US","France"
+#     dbNotIn "country", "Germany","Argentina"
+#     put dbGet("contacts") into tR
 #
 # Translates to the following SQL:
 #
-#     SELECT * FROM contacts WHERE country NOT IN('Brazil', 'US', 'France') and country NOT IN('Germany','Argentina') 
+#     SELECT * FROM contacts WHERE country NOT IN('Brazil', 'US', 'France') and country NOT IN('Germany','Argentina')
 #
 # Now, if you want  to use OR    instead of AND, you just pass an last extra parameter with
 # the operator you want, like:
 #
-#     dbNotIn "country", "Brazil","US","France" 
-#     dbNotIn "country", "Germany","Argentina","OR" 
-#     put dbGet("contacts") into tR 
+#     dbNotIn "country", "Brazil","US","France"
+#     dbNotIn "country", "Germany","Argentina","OR"
+#     put dbGet("contacts") into tR
 #
 # Translates to the following SQL:
 #
-#     SELECT * FROM contacts WHERE country NOT IN('Brazil', 'US', 'France') or country NOT IN('Germany','Argentina') 
+#     SELECT * FROM contacts WHERE country NOT IN('Brazil', 'US', 'France') or country NOT IN('Germany','Argentina')
 #
 command dbNotIn pColumn
    put the paramcount into tParamCount
    put param(tParamCount) into pConcatenationOperator
-   
+
    if pConcatenationOperator is not among the items of "AND,OR" then
       put empty into pConcatenationOperator
    else
       subtract 1 from tParamCount
    end if
-   
+
    if pConcatenationOperator is empty then
       put "AND" into pConcatenationOperator
    end if
-   
+
    put "NOT IN" into tOperator
-   
-   
+
+
    if dbA["where"] is empty then
       put "WHERE" && pColumn && "NOT IN("  before dbA["where"]
    else
@@ -387,7 +389,7 @@ command dbNotIn pColumn
    end repeat
    delete char -1 of dbA["where"]
    put ")" after dbA["where"]
-   
+
    set the itemdel to space
    put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
 end dbNotIn
@@ -420,7 +422,7 @@ end dbNotIn
 #
 # You will end put with the following WHERE clause:
 #
-#     WHERE 'email' LIKE '%runrev.com%' AND ( 'age' < 18 OR 'AGE' > 35 ) 
+#     WHERE 'email' LIKE '%runrev.com%' AND ( 'age' < 18 OR 'AGE' > 35 )
 #
 # This SQL will execute as you expect because you are being clear on how the matches should go.
 # Remember to add the close parenthesis with dbCloseParenthesis as well.
@@ -457,7 +459,7 @@ end dbOpenParenthesis
 #
 # You will end put with the following WHERE clause:
 #
-#     WHERE 'email' LIKE '%runrev.com%' AND ( 'age' < 18 OR 'AGE' > 35 ) 
+#     WHERE 'email' LIKE '%runrev.com%' AND ( 'age' < 18 OR 'AGE' > 35 )
 #
 # This SQL will execute as you expect because you are being clear on how the matches should go.
 # Remember to add the close parenthesis with dbCloseParenthesis as well.
@@ -471,21 +473,21 @@ end dbCloseParenthesis
 # This command allows you to refine your query. Use it before calling functions such as: _dbGet, dbUpdate, dbDelete_.
 #
 # If a code like:
-#     put dbGet("contacts") into tDataA 
+#     put dbGet("contacts") into tDataA
 # returns all the contacts. Then a code like:
-#     dbLike "email", "runrev.com" 
-#     put dbGet("contacts") into tDataA 
+#     dbLike "email", "runrev.com"
+#     put dbGet("contacts") into tDataA
 # Will return all contacts with emails from runrev.com
 #
-# The default matching routine for this _contains_.  
-#     dbLike "email", "runrev.com" 
+# The default matching routine for this _contains_.
+#     dbLike "email", "runrev.com"
 # Translates to:
-#     WHERE email LIKE '%runrev.com%' 
+#     WHERE email LIKE '%runrev.com%'
 # If you want to change the matching routines, then call it like:
-#     dbLike "name", "john", "after" 
+#     dbLike "name", "john", "after"
 # Translates to:
-#     WHERE name LIKE 'john%' 
-# This will return all contacts with names starting with John. You can also use 
+#     WHERE name LIKE 'john%'
+# This will return all contacts with names starting with John. You can also use
 # 'exact' as the matching routine to strip the wildcards and match the exact value.
 #
 # You can have as many dbLike calls as you want. When you finally call a function that touches
@@ -499,24 +501,24 @@ end dbCloseParenthesis
 # As a convention, the standard operator for multiple dbWhere calls is AND
 # so if you call
 #
-#     dbLike "email", "runrev.com" 
-#     dbLike "first_name", "Kevin" 
-#     put dbGet("contacts") into tR 
+#     dbLike "email", "runrev.com"
+#     dbLike "first_name", "Kevin"
+#     put dbGet("contacts") into tR
 #
 # Translates to the following SQL:
 #
-#     SELECT * FROM contacts WHERE email LIKE '%runrev.com%' AND first_name LIKE '%Kevin%' 
+#     SELECT * FROM contacts WHERE email LIKE '%runrev.com%' AND first_name LIKE '%Kevin%'
 #
 # Now, if you want  to use OR    instead of AND, you just pass an fourth extra parameter with
 # the operator you want, like:
 #
-#     dbLike "email", "runrev.com" 
-#     dbLike "first_name", "Kevin", "after", "OR" 
-#     put dbGet("contacts") into tR 
+#     dbLike "email", "runrev.com"
+#     dbLike "first_name", "Kevin", "after", "OR"
+#     put dbGet("contacts") into tR
 #
 # Translates to the following SQL:
 #
-#     SELECT * FROM contacts WHERE email LIKE '%runrev.com%' OR first_name LIKE 'Kevin%' 
+#     SELECT * FROM contacts WHERE email LIKE '%runrev.com%' OR first_name LIKE 'Kevin%'
 #
 # Can also pass the matching operator and the concatenation operator.
 #
@@ -535,25 +537,25 @@ command dbLike pColumn, pValue, pMatch, pConcatenationOperator
          put "%" after pValue
          break
    end switch
-   
+
    if pConcatenationOperator is empty then
       put "AND" into pConcatenationOperator
    end if
-   
+
    put "LIKE" into tOperator
-   
+
    if dbA["where columns"][pColumn] is empty then
       if dbA["where"] is empty then
          put "WHERE" && pColumn && tOperator && placeholder(pValue) before dbA["where"]
       else
          put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
       end if
-   else 
+   else
       # AAG: Support for multiple columns of the same name.
       --       replace dbA["where columns"][pColumn] with (pColumn && tOperator && placeholder(pValue)) in dbA["where"]
       put " " & pConcatenationOperator  && pColumn && tOperator && placeholder(pValue) after dbA["where"]
    end if
-   
+
    set the itemdel to space
    put item -3 to -1 of dbA["where"]  into dbA["where columns"][pColumn]
 end dbLike
@@ -562,12 +564,12 @@ end dbLike
 # the database.
 # Sometimes you need to write a complex SQL statement that is beyond what we offer with routines
 # such as _dbWhere, dbLike, dbLimit_, in this cases you can still use our handy database functions
-# but specify the SQL statement yourself. 
+# but specify the SQL statement yourself.
 #
 # For example:
-#     dbSetSQL "SELECT * FROM page, tags WHERE tags.page_id = page.id" 
-#     put dbGet() into tPagesAndTagsArray 
-# 
+#     dbSetSQL "SELECT * FROM page, tags WHERE tags.page_id = page.id"
+#     put dbGet() into tPagesAndTagsArray
+#
 # Our commands and functions cover most of the common uses for application database usage
 # but if you need more, you can always write your own SQL. The golden rule is: _if you know what a join is, then you can write it better than the library_.
 #
@@ -588,18 +590,18 @@ end dbSetSQL
 command dbExecuteSQL pSQL, pDatabaseConnection
    if pDatabaseConnectionID is empty then
       if dbId is not empty then
-         put dbId into pDatabaseConnectionA
+         put dbId into pDatabaseConnection
       else
-         put dbConfigA into pDatabaseConnectionA
+         put dbConfigA into pDatabaseConnection
       end if
    end if
-   
+
    if pDatabaseConnection is a number then
       revExecuteSQL pDatabaseConnection, pSQL
    else
-      remoteExecuteSQL pDatabaseConnection, pSQL
+      dbRemoteExecuteSQL pDatabaseConnection, pSQL
    end if
-   
+
    put the result into theError
    put empty into dbA
    return theError
@@ -609,8 +611,8 @@ end dbExecuteSQL
 
 # This command sets the limit for the query.
 #
-#     dbLimit 10 
-#     put dbGet("contacts") into tDataA 
+#     dbLimit 10
+#     put dbGet("contacts") into tDataA
 #
 # Will return up to ten contacts.
 #
@@ -620,9 +622,9 @@ command dbLimit pNum
 end dbLimit
 
 # Sets the ordering for a query.
-# 
-#     dbOrder 'age' 
-#     put dbGet("contacts") into tDataA 
+#
+#     dbOrder 'age'
+#     put dbGet("contacts") into tDataA
 #
 # Will return the contacts array ordered by age.
 # *Parameters:* A valid column or clause for the ordering.
@@ -631,10 +633,10 @@ command dbOrderBy pOrderBy
 end dbOrderBy
 
 # Sets the grouping options for a query.
-# 
-#     dbGroupBy 'country' 
+#
+#     dbGroupBy 'country'
 #     dbColumn 'count(1) as qty'
-#     put dbGet("contacts") into tDataA 
+#     put dbGet("contacts") into tDataA
 #
 # Will return the contacts array grouped by country.
 # *Parameters:* A valid column or clause for the grouping.
@@ -647,15 +649,15 @@ end dbGroupBy
 
 # Returns all data from a given table as an array.
 #
-# You can use commands such as _dbWhere, dbLike, dbLimit, dbOrderBy_ to set 
+# You can use commands such as _dbWhere, dbLike, dbLimit, dbOrderBy_ to set
 # parameters to be used by this function.
 #
 # If a code like:
-#     put dbGet("contacts") into tDataA 
+#     put dbGet("contacts") into tDataA
 # returns all the contacts. Then a code like:
-#     dbWhere("country", "Brazil") 
-#     dbWhere("sex", "male") 
-#     put dbGet("contacts") into tDataA 
+#     dbWhere("country", "Brazil")
+#     dbWhere("sex", "male")
+#     put dbGet("contacts") into tDataA
 # Will return all contacts that are male and from Brazil.
 #
 # This functions works on the default connection id set with _dbSetDefaultConnectionID_ unless
@@ -664,12 +666,17 @@ end dbGroupBy
 # *Parameters:* A table name.
 # *Parameters:* A table name and a connection id.
 #
-function dbGet pTable, pDatabaseConnectionID
-   if pDatabaseConnectionID  is empty then
-      put dbID into pDatabaseConnectionID
+function dbGet pTable, pDatabaseConnection
+   if pDatabaseConnection is empty then
+      if dbID is a number then
+         put dbID into pDatabaseConnection
+     else
+         put dbConfigA into pDatabaseConnection
+      end if
    end if
    put empty into theArray
-   if pDatabaseConnectionID is an integer then
+   if pDatabaseConnection is an integer then
+      // connection is a direct connection
       if dbA["columns"] is empty then
          put "*" into dbA["columns"]
       end if
@@ -678,12 +685,12 @@ function dbGet pTable, pDatabaseConnectionID
       end if
       put dbA["placeholders"] into tPlaceholdersA
       put dbA["sql"] into dbData["last sql"]
-      put revQueryDatabase( pDatabaseConnectionID, dbA["sql"],"tPlaceholdersA") into theCursor
+      put revQueryDatabase( pDatabaseConnection, dbA["sql"],"tPlaceholdersA") into theCursor
       put empty into dbA
       if theCursor is an integer then
          ConvertSQLCursorToArray theCursor, theArray
          put the result into theError
-         
+
          if theError is empty then
             revCloseCursor theCursor
             return theArray
@@ -693,7 +700,19 @@ function dbGet pTable, pDatabaseConnectionID
             return theError
          end if
       end if
-      
+   else
+      // connection is through our remote lib
+      if dbA["columns"] is empty then
+         put "*" into dbA["columns"]
+      end if
+      if dbA["sql"] is empty then
+         put "SELECT" && dbA["columns"] && "FROM" && pTable && dbA["where"] && dbA["group by"] && dbA["order by"] && dbA["limit"]  into dbA["sql"]
+      end if
+      put dbA["placeholders"] into tPlaceholdersA
+      put dbA["sql"] into dbData["last sql"]
+      put dbRemoteQueryDatabase( pDatabaseConnectionA, pTable, dbA["sql"], tPlaceholdersA) into theArray
+      put empty into dbA
+      return theArray
    end if
 end dbGet
 
@@ -702,31 +721,31 @@ private command ConvertSQLCursorToArray pCursor, @pOutArrayA
     local i
     local theFields
     local theError
-    
+
     ## Get the names of all the columns in the database cursor
     put revDatabaseColumnNames(pCursor) into theFields
     if theFields begins with "revdberr," then
         put item 2 to -1 of theFields into theError
     end if
-    
+
     if theError is empty then
         put 0 into i
         ## Loop through all rows in cursor
         repeat until revQueryIsAtEnd(pCursor)
             add 1 to i
-            
+
             ## Move all fields in row into next dimension of the array
             repeat for each item theField in theFields
                put textdecode(revDatabaseColumnNamed(pCursor, theField), "UTF8") into pOutArrayA[i][ theField ]
 
             end repeat
-            
+
             revMoveToNextRecord pCursor
         end repeat
     end if
-    
+
     return theError
-    
+
 end ConvertSQLCursorToArray
 
 
@@ -743,7 +762,7 @@ private function arrayToFieldValues pA
    put the keys of pA into tKeys
    sort tKeys
    repeat for each line tK in tKeys
-      put placeholder(pA[tK]) & ", " after tBuf 
+      put placeholder(pA[tK]) & ", " after tBuf
    end repeat
    delete char -2 to -1 of tBuf
    return tBuf
@@ -766,14 +785,18 @@ function dbGetDefaultConnectionID
    return dbID
 end dbGetDefaultConnectionID
 
+function dbGetDefaultConnectionConfiguration
+   return dbConfigA
+end dbGetDefaultConnectionConfiguration
+
 # This function inserts a new record into the database.
 # It uses an array where each element is a field value with the same keys as the field names
 # on the database schema.
 #
-#     put "Andre" into tDataA["firstName"] 
-#     put "Garzia" into tDataA["lastName"] 
-#     put "andre@andregarzia.com" into tDataA["email"] 
-#     put dbInsert("contacts", tDataA) into tResult 
+#     put "Andre" into tDataA["firstName"]
+#     put "Garzia" into tDataA["lastName"]
+#     put "andre@andregarzia.com" into tDataA["email"]
+#     put dbInsert("contacts", tDataA) into tResult
 #
 # Will insert a new record with the values from the array. This function works on the default connection id unless
 # you specify an extra parameter with the desired connection id.
@@ -783,16 +806,24 @@ end dbGetDefaultConnectionID
 #
 # *Returns:* the result from the inner revExecuteSQL call.
 #
-function dbInsert pTable, pDataA, pDatabaseConnectionID
-   if pDatabaseConnectionID is empty then
-      put dbID into pDatabaseConnectionID
+function dbInsert pTable, pDataA, pDatabaseConnection
+   if pDatabaseConnection is empty then
+      if dbID is a number then
+         put dbID into pDatabaseConnection
+     else
+         put dbConfigA into pDatabaseConnection
+      end if
    end if
    if dbA["sql"] is empty then
       put "INSERT INTO" && pTable & "(" & arrayToFieldNames(pDataA) & ") VALUES (" & arrayToFieldValues(pDataA) & ")" into dbA["sql"]
    end if
    put dbA["placeholders"] into tPlaceholdersA
    put dbA["sql"] into dbData["last sql"]
-   revExecuteSQL pDatabaseConnectionID, dbA["sql"], "tPlaceholdersA"
+   if pDatabaseConnection is a number then
+      revExecuteSQL pDatabaseConnection, dbA["sql"], "tPlaceholdersA"
+   else
+      dbRemoteExecuteSQL pDatabaseConnection, pTable, dbA["sql"], tPlaceholdersA
+   end if
    put the result into theError
    put empty into dbA
    return theError
@@ -817,20 +848,24 @@ end dbInsert
 #
 # The return value is the number of records added or an error string that starts with __dberr,__.
 #
-function dbBatchInsert pTable, pBatchDataA, pDatabaseConnectionID
-   if pDatabaseConnectionID is empty then
-      put dbID into pDatabaseConnectionID
+function dbBatchInsert pTable, pBatchDataA, pDatabaseConnection
+   if pDatabaseConnection is empty then
+      if dbID is a number then
+         put dbID into pDatabaseConnection
+     else
+         put dbConfigA into pDatabaseConnection
+      end if
    end if
-   
+
    put the keys of pBatchDataA into tKeys
    sort numeric ascending tKeys
    repeat for each line x in tKeys
       put pBatchDataA[x] into tDataA
-      get dbInsert(pTable, tDataA, pDatabaseConnectionID)
+      get dbInsert(pTable, tDataA, pDatabaseConnection)
       if it is not a number then
          return "dberr, error adding record" && x &":" && it
       end if
-      add it to tTotal 
+      add it to tTotal
    end repeat
    return tTotal
 end dbBatchInsert
@@ -840,23 +875,23 @@ private function arrayToUpdateSQL pA
    put the keys of pA into tKeys
    sort tKeys
    repeat for each line tK in tKeys
-      put tK && "=" && placeholder(pA[tK]) & ", " after tBuf 
+      put tK && "=" && placeholder(pA[tK]) & ", " after tBuf
    end repeat
    delete char -2 to -1 of tBuf
    return tBuf
 end arrayToUpdateSQL
 
 # Updates a record in the database.
-# 
-# Use a _dbWhere_ or a  _dbLike_ to specify which record. 
+#
+# Use a _dbWhere_ or a  _dbLike_ to specify which record.
 # For example:
 #
-#     put "contato@andregarzia.com" into tNewDataA["email"] 
-#     dbWhere "email", "andre@andregarzia.com" 
+#     put "contato@andregarzia.com" into tNewDataA["email"]
+#     dbWhere "email", "andre@andregarzia.com"
 #     put dbUpdate("contacts", tNewDataA) into tResult
-# 
+#
 # This will change the email for that user. It is analogous to executing the following SQL:
-#     UPDATE contacts SET email = 'contato@andregarzia.com' WHERE email = 'andre@andregarzia.com' 
+#     UPDATE contacts SET email = 'contato@andregarzia.com' WHERE email = 'andre@andregarzia.com'
 #
 #     REMEMBER:     If you don't specify a _dbWhere_ or a  _dbLike_ then the library will return an
 # error for this call starting with "dberr,". This is to protect you from accidently updating all records
@@ -867,12 +902,16 @@ end arrayToUpdateSQL
 #
 # *Parameters:* a table name and a data array.
 # *Parameters:* a table name, a data array and a connection id.
-# 
+#
 # *Returns:* the result from the inner revExecuteSQL call.
 #
-function dbUpdate pTable, pDataA, pDatabaseConnectionID
-   if pDatabaseConnectionID is empty then
-      put dbID into pDatabaseConnectionID
+function dbUpdate pTable, pDataA, pDatabaseConnection
+   if pDatabaseConnection is empty then
+      if dbID is a number then
+         put dbID into pDatabaseConnection
+     else
+         put dbConfigA into pDatabaseConnection
+      end if
    end if
    if dbA["sql"] is empty and dbA["where"] is not empty then
       put "UPDATE" && pTable && "SET" && arrayToUpdateSQL(pDataA) && dbA["where"] into dbA["sql"]
@@ -882,22 +921,26 @@ function dbUpdate pTable, pDataA, pDatabaseConnectionID
    end if
    put dbA["placeholders"] into tPlaceholdersA
    put dbA["sql"] into dbData["last sql"]
-   revExecuteSQL pDatabaseConnectionID, dbA["sql"], "tPlaceholdersA"
+   if pDatabaseConnection is a number then
+      revExecuteSQL pDatabaseConnection, dbA["sql"], "tPlaceholdersA"
+   else
+      dbRemoteExecuteSQL pDatabaseConnectionA, pTable, dbA["sql"], tPlaceholdersA
+   end if
    put the result into theError
    put empty into dbA
    return theError
 end dbUpdate
 
 # Deletes a record from the database.
-# 
-# Use a _dbWhere_ or a  _dbLike_ to specify which record. 
+#
+# Use a _dbWhere_ or a  _dbLike_ to specify which record.
 # For example:
 #
-#     dbWhere "email", "andre@andregarzia.com" 
+#     dbWhere "email", "andre@andregarzia.com"
 #     put dbDelete("contacts") into tResult
-# 
+#
 # This will delete that user. It is analogous to executing the following SQL:
-#     DELETE FROM contacts WHERE email = 'andre@andregarzia.com' 
+#     DELETE FROM contacts WHERE email = 'andre@andregarzia.com'
 #
 #     REMEMBER:     If you don't specify a _dbWhere_ or a  _dbLike_ then the library will return an
 # error for this call starting with "dberr,". This is to protect you from accidently deleting all records
@@ -908,12 +951,16 @@ end dbUpdate
 #
 # *Parameters:* a table name and a data array.
 # *Parameters:* a table name, a data array and a connection id.
-# 
+#
 # *Returns:* the result from the inner revExecuteSQL call.
 #
-function dbDelete pTable, pDatabaseConnectionID
-   if pDatabaseConnectionID  is empty then
-      put dbID into pDatabaseConnectionID
+function dbDelete pTable, pDatabaseConnection
+   if pDatabaseConnection is empty then
+      if dbID is a number then
+         put dbID into pDatabaseConnection
+     else
+         put dbConfigA into pDatabaseConnection
+      end if
    end if
    if dbA["sql"] is empty and dbA["where"] is not empty then
       put "DELETE FROM" && pTable && dbA["where"] && dbA["limit"] into dbA["sql"]
@@ -923,7 +970,11 @@ function dbDelete pTable, pDatabaseConnectionID
    end if
    put dbA["placeholders"] into tPlaceholdersA
    put dbA["sql"] into dbData["last sql"]
-   revExecuteSQL pDatabaseConnectionID, dbA["sql"], "tPlaceholdersA"
+   if pDatabaseConnection is a number then
+      revExecuteSQL pDatabaseConnection, dbA["sql"], "tPlaceholdersA"
+   else
+      dbRemoteExecuteSQL pDatabaseConnectionA, pTable, dbA["sql"], tPlaceholdersA
+   end if
    put the result into theError
    put empty into dbA
    return theError
@@ -933,16 +984,16 @@ end dbDelete
 # with the same name as the fields on a given database table. If it finds the correct controls
 # it picks their values and assemble an array to be used by the database touching functions.
 #
-# If you have a card with a field called "firstName", a field called "lastName" and a menu button 
+# If you have a card with a field called "firstName", a field called "lastName" and a menu button
 # called "country" which are all fields on your _contacts_ table and you use:
 #
-#     put dbCardToArray("contacts") into tDataA 
+#     put dbCardToArray("contacts") into tDataA
 #
 # it is the same as writing:
 #
-#     put textencode(field "firstName", "UTF8") into tDataA["firstName"] 
-#     put textencode(field "lastName", "UTF8") into tDataA["lastName"] 
-#     put the label of button "country" into tDataA["country"] 
+#     put textencode(field "firstName", "UTF8") into tDataA["firstName"]
+#     put textencode(field "lastName", "UTF8") into tDataA["lastName"]
+#     put the label of button "country" into tDataA["country"]
 #
 # So it follows these rules:
 # 1 - it looks for a field, it there is one, then it picks the value and place it into the array.
@@ -954,7 +1005,7 @@ end dbDelete
 #
 # *Parameters:* a table name.
 # *Parameters:* a table name and a connection id.
-# 
+#
 # *Returns:* an array
 function dbCardToArray pTable, pDatabaseConnectionID
    if pDatabaseConnectionID is empty then
@@ -986,16 +1037,16 @@ end dbCardToArray
 # card. If it finds a field, button or group with the same name, it will try to replace the current value
 # for the control with the value from the array.
 #
-# If you have a card with a field called "firstName", a field called "lastName" and a menu button 
+# If you have a card with a field called "firstName", a field called "lastName" and a menu button
 # called "country" which are all fields on your _contacts_ table and you use:
 #
-#     dbArrayToCard tDataA 
+#     dbArrayToCard tDataA
 #
 # it is the same as writing:
 #
 #     put textdecode(tDataA["firstName"], "UTF8") into field "firstName"
 #     put textdecode(tDataA[ "lastName"], "UTF8") into field "lastName"
-#     set the label of button "country" to tDataA["country"] 
+#     set the label of button "country" to tDataA["country"]
 #
 # So it follows these rules:
 # 1 - it looks for a field, it there is one, then it sets the unicodetext property.
@@ -1007,7 +1058,7 @@ end dbCardToArray
 #
 # *Parameters:* an array.
 # *Parameters:* an array and a connection id.
-# 
+#
 command dbArrayToCard pDataA
    repeat for each key tK in pDataA
       -- check for field
@@ -1058,15 +1109,15 @@ command dbCreateNewSQLiteFile pLocation, pInitialSQL
    if there is a file pLocation then
       return "dberr, file already exists"
    end if
-   
+
    -- create new file
    put empty into url ("binfile:" & pLocation)
-   
+
    -- if there is some initial SQL then execute it.
    if pInitialSQL is not empty then
       put dbPreserveQueryParameters() into tQuery
       dbResetQuery
-      
+
       -- opening new db file
       get revOpenDatabase("sqlite", pLocation,,,)
       if it is not a number then
@@ -1075,16 +1126,16 @@ command dbCreateNewSQLiteFile pLocation, pInitialSQL
       else
          put it into tID
       end if
-      
+
       -- executing SQL
       dbExecuteSQL pInitialSQL, tID
       dbRestoreQueryParameters tQuery
       return the result
-      
+
    end if
-   
+
    dbRestoreQueryParameters tQuery
-   
+
 end dbCreateNewSQLiteFile
 
 # This command will copy the SQLite files from the engines folder to the documents.
@@ -1101,14 +1152,14 @@ end dbCreateNewSQLiteFile
 # For example, suppose you have your SQLite file called _contacts.db_ and you added this file
 # to your Standalone using the *copy files* tab of the *Standalone builder settings*, calling this:
 #
-#      dbMoveAllSQLiteFilesFromEngineToDocuments ".db"     
+#      dbMoveAllSQLiteFilesFromEngineToDocuments ".db"
 #
 # Will copy this file to the documents folder. Then after that you can simply access it using:
 #
-#     the documents folder & "/contacts.db" 
+#     the documents folder & "/contacts.db"
 #
 # Be aware that if there is already a file in the destination with the same name, this command WILL NOT
-# overwrite it. 
+# overwrite it.
 #
 command dbMoveAllSQLiteFilesFromEngineToDocuments pExtension
    if the environment is not "mobile" then
@@ -1116,15 +1167,15 @@ command dbMoveAllSQLiteFilesFromEngineToDocuments pExtension
    end if
    put the defaultfolder into tDF
    set the defaultfolder to the engine folder
-   
+
    put the files into tFilesList
-   
+
    if pExtension is empty then
-      put ".db" into pExtension
+      put ".sqlite" into pExtension
    end if
-   
+
    filter tFilesList with ("*" & pExtension & "*")
-   
+
    repeat for each line f in tFilesList
       put the defaultfolder & "/" & f into tEngineLocation
       put the documents folder & "/" & f into tDocumentsLocation
@@ -1137,114 +1188,164 @@ command dbMoveAllSQLiteFilesFromEngineToDocuments pExtension
          return "dberr," && the result
       end if
    end repeat
-   
+
    set the defaultfolder to tDF
 end dbMoveAllSQLiteFilesFromEngineToDocuments
 
 --> Remote stuff
-# Executes SQL on remote server. 
-# *Parameters:*
-# - the connection array
-# - the SQL
-#
-# Returns an error or an array.
-on  remoteExecuteSQL pDatabaseConnectionA, pSQL, pPlaceholdersA
-   if pDatabaseConnectionA["user"] is not empty then
-      put pDatabaseConnectionA["user"] into tDataA["user"]
-   end if
-   
-   if pDatabaseConnectionA["password"] is not empty then
-      put pDatabaseConnectionA["password"] into tDataA["password"]
-   end if
-   
-   if pDatabaseConnectionA["database"] is not empty then
-      put pDatabaseConnectionA["database"] into tDataA["db"]
-   end if
-   
-   if pPlaceholdersA is an array then
-      put pPlaceholdersA into tDataA["placeholders"]
-   end if
-   
-   if pDatabaseConnectionA["cipher"] is empty then
-      put "aes-256-ctr" into pDatabaseConnectionA["cipher"]
-   end if
-   
-   put "execute" into tDataA["type"]
-   
-   put pSQL into tDataA["sql"]
-   put jsonexport(tDataA) into tFlatData
-   
-   if pDatabaseConnectionA["encryption_password"] is not empty then
-      encrypt tFlatData using pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"] 
-      put it into tFlatData
-   end if
-   
-   post tFlatData to url pDatabaseConnectionA["url"]
-   if the result is not empty then
-      return "dbliberr:" && the result
-   else
-      decrypt tRetVal using  pDatabaseConnectionA["cipher"] with password pDatabaseConnectionA["encryption_password"]
-      put it into tRetVal
-      put jsonimport(tRetVal) into tRetValA
-      return tRetValA
-   end if
-end remoteExecuteSQL
 
-# Queries database on remote server. 
+# Executes SQL on remote server.
 # *Parameters:*
 # - the connection array
 # - the SQL
 #
 # Returns an error or an array.
-function  remoteQueryDatabase pDatabaseConnectionA, pSQL, pPlaceholdersA
+on  dbRemoteExecuteSQL pDatabaseConnectionA, pTable, pSQL, pPlaceholdersA
    if pDatabaseConnectionA["user"] is not empty then
       put pDatabaseConnectionA["user"] into tDataA["user"]
    end if
-   
+
    if pDatabaseConnectionA["password"] is not empty then
       put pDatabaseConnectionA["password"] into tDataA["password"]
    end if
-   
+
    if pDatabaseConnectionA["database"] is not empty then
       put pDatabaseConnectionA["database"] into tDataA["db"]
    end if
-   
+
+   put pTable into tDataA["table"]
+
    if pPlaceholdersA is an array then
-      put pPlaceholdersA into tDataA["placeholders"]
+      if kREPLACE_PLACEHOLDERS is false then
+         repeat for each key k in pPlaceholdersA
+            put pPlaceholdersA[k] into tA["key" & k]
+            replace ":" & k with ":key" & k in pSQL
+         end repeat
+
+         put tA into tDataA["placeholders"]
+
+      else
+         repeat for each key k in pPlaceholdersA
+            put pPlaceholdersA[k] into tValue
+            if tValue is not a number then
+               replace quote with quote&quote in tValue
+               put quote & tValue & quote into tValue
+            end if
+            replace (":" & k) with tValue in pSQL
+         end repeat
+      end if
    end if
-   
+
+
    if pDatabaseConnectionA["cipher"] is empty then
       put "aes-256-ctr" into pDatabaseConnectionA["cipher"]
    end if
-   
+
    if pDatabaseConnectionA["encryption_key"] is empty then
       put "FFFFFFFFFFFFDDCCFFFFFFFFFFFFDDCC" into pDatabaseConnectionA["encryption_key"]
    end if
-   
-   put "query" into tDataA["type"]
-   
+
+   put "execute" into tDataA["type"]
+
    put pSQL into tDataA["sql"]
    put jsonexport(tDataA) into tFlatData
-   
+
    encrypt tFlatData using pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"]
    if the result is not empty then
       return "dbliberr: problem with encryption:" && the result
    end if
-   
+
+   --    get line -1 of it
    put base64encode(it) into tFlatData
-   
+
    post tFlatData to url pDatabaseConnectionA["url"]
    if the result is not empty then
       return "dbliberr:" && the result
    else
+      get line -1 of it
+      put base64decode(it) into tRetVal
+      decrypt tRetVal using  pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"]
       put it into tRetVal
-      decrypt base64decode(tRetVal) using  pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"] 
+      put jsonimport(tRetVal) into tRetValA
+      return tRetValA
+   end if
+end dbRemoteExecuteSQL
+
+# Queries database on remote server.
+# *Parameters:*
+# - the connection array
+# - the SQL
+#
+# Returns an error or an array.
+function  dbRemoteQueryDatabase pDatabaseConnectionA, pTable, pSQL, pPlaceholdersA
+   if pDatabaseConnectionA["user"] is not empty then
+      put pDatabaseConnectionA["user"] into tDataA["user"]
+   end if
+
+   if pDatabaseConnectionA["password"] is not empty then
+      put pDatabaseConnectionA["password"] into tDataA["password"]
+   end if
+
+   if pDatabaseConnectionA["database"] is not empty then
+      put pDatabaseConnectionA["database"] into tDataA["db"]
+   end if
+
+   put pTable into tDataA["table"]
+
+   if pPlaceholdersA is an array then
+      if kREPLACE_PLACEHOLDERS is false then
+         repeat for each key k in pPlaceholdersA
+            put pPlaceholdersA[k] into tA["key" & k]
+            replace ":" & k with ":key" & k in pSQL
+         end repeat
+
+         put tA into tDataA["placeholders"]
+      else
+         repeat for each key k in pPlaceholdersA
+            put pPlaceholdersA[k] into tValue
+            if tValue is not a number then
+               replace quote with quote&quote in tValue
+               put quote & tValue & quote into tValue
+            end if
+            replace (":" & k) with tValue in pSQL
+         end repeat
+      end if
+   end if
+
+   if pDatabaseConnectionA["cipher"] is empty then
+      put "aes-256-ctr" into pDatabaseConnectionA["cipher"]
+   end if
+
+   if pDatabaseConnectionA["encryption_key"] is empty then
+      put "FFFFFFFFFFFFDDCCFFFFFFFFFFFFDDCC" into pDatabaseConnectionA["encryption_key"]
+   end if
+
+   put "query" into tDataA["type"]
+
+   put pSQL into tDataA["sql"]
+   put jsonexport(tDataA) into tFlatData
+
+   encrypt tFlatData using pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"]
+   if the result is not empty then
+      return "dbliberr: problem with encryption:" && the result
+   end if
+
+   put base64encode(it) into tFlatData
+
+   post tFlatData to url pDatabaseConnectionA["url"]
+   if the result is not empty then
+      return "dbliberr:" && the result
+   else
+      get line -1 of it
+      put base64decode(it) into tRetVal
+      decrypt tRetVal using  pDatabaseConnectionA["cipher"] with key pDatabaseConnectionA["encryption_key"]
       put it into tRetVal
       try
          put jsonimport(tRetVal) into tRetValA
       catch n
          answer error n
+         put tRetVal
       end try
       return tRetValA
    end if
-end remoteQueryDatabase
+end dbRemoteQueryDatabase
