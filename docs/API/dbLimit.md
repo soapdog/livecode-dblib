@@ -8,4 +8,4 @@ put dbGet("contacts") into tDataA
 Will return up to ten contacts.
 
 ## Parameters
-* `dbLimit pValue`: A valid number for the limit.
+* `dbLimit pValue`: A valid number for the limit. 
