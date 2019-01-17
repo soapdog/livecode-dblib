@@ -1,5 +1,4 @@
 - [Home](/)
-
 - API Reference
 
   - Connections & Databases
@@ -9,7 +8,7 @@
     - [dbSetDefaultConnectionConfiguration](api/dbSetDefaultConnectionConfiguration.md)
     - [dbGetDefaultConnectionID](api/dbGetDefaultConnectionID.md)
     - [dbGetDefaultConnectionConfiguration](api/dbGetDefaultConnectionConfiguration.md)
-
+    - [Using our PHP companion](/remote.md)
   - Fetching records
 
     - [dbGet](api/dbGet.md)
