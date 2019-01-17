@@ -1,12 +1,4 @@
-- Getting started
-
-  - [Quick start with local database](quickstart.md)
-  - [Quick start with remote database](quickstart_remote.md)
-
-- Tutorial
-
-  - [Creating a contacts application](tutorial.md)
-  - [A remote todo list](tutorialRemote.md)
+- [Home](/)
 
 - API Reference
 
