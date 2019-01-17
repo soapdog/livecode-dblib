@@ -6,9 +6,9 @@ by [Andre Alves Garzia](mailto:support@andregarzia.com)
 ## Objective
 Creating a little ORM library to be used on mobile applications. This library is inspired by RevIgniter, Rails and others.
 
-<iframe src="http://player.vimeo.com/video/46918350" width="500" height="313" frameborder="0" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>
+<iframe src="https://player.vimeo.com/video/46918350" width="500" height="313" frameborder="0" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>
 
-<p><a href="http://vimeo.com/46918350">DB Lib, a minimalist database library for LiveCode</a> from <a href="http://vimeo.com/user2620212">Andre Garzia</a> on <a href="http://vimeo.com">Vimeo</a>.</p>
+<p><a href="https://vimeo.com/46918350">DB Lib, a minimalist database library for LiveCode</a> from <a href="https://vimeo.com/user2620212">Andre Garzia</a> on <a href="https://vimeo.com">Vimeo</a>.</p>
 
 ## Licensing terms:
 These scripts are licensed to you if you agree to be bound to one of the following license types at your choice:  
